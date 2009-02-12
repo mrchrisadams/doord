@@ -9,7 +9,16 @@ import re, StringIO
 
 
 class Watcher(DatagramProtocol):
-
+    
+        """
+        Whenever a new entry is added to doord's log file, the Watcher 
+        class checks the new line against a whitelist of messages that 
+        are safe to ignore, listed as in self.regexes. 
+        If the content of the entry doesn't match these regexes, and is
+        considered to represent an error state, the Watcher will send
+        an email to admin staff
+        """  
+      
 	receipients = []
 	template_texts = {
 		'transition_to_log_state': ["[doord] Error has been fixed", "Last line:\n%(line)s\n\nRemainder of log:\n%(log)s"],
@@ -58,8 +67,8 @@ class Watcher(DatagramProtocol):
 
 	# state logic
 	def error(self, line):
-		"""eval whether a given line is an log entry representing an error state"""
-		if not "doord" in line:
+		"""eval whether a given line is a log entry representing an error state"""
+		if not "doord" or "bad health" in line:
 			return False
 
 		line = line[7:]
