@@ -111,3 +111,36 @@ class GeminiReader(Reader, DatagramProtocol):
             # unidentified message, log it for reference
             logger.warn("GeminiReader", "unidentified packet received: %r from %s:%d" % (data, host, port))
 
+# this is Reader for the Bifferboard button 
+class ButtonReader(Reader, DatagramProtocol):
+    def __init__(self, pipeline, config = {}):
+        Reader.__init__(self, pipeline, config)
+        self.port = config.get('port', 6321)
+        self.min_interval = config.get('min_interval', 0.5)
+        self.hb_warn_interval = config.get('hb_warn_interval', 15)
+        internet.UDPServer(self.port, self).setServiceParent(self.pipeline.getServiceCollection())
+
+        self.last_read = 0
+        self.last_hb = 0
+
+    def report_health(self):
+        if self.last_hb == 0 or time.time() - self.last_hb < self.hb_warn_interval:
+            return True
+        return "no heartbeat in %d seconds (warn interval %d)" % (time.time() - self.last_hb, self.hb_warn_interval)
+
+    def datagramReceived(self, data, (host, port)):
+        # honour the minimum delta between reads, this is to prevent activation during operation cycle errors
+        # in case the card is picked up multiple times
+        if self.last_read != 0 and time.time() - self.last_read < self.min_interval:
+            return
+
+        if data[:2] == "HB":
+            # this is a heartbeat message
+            self.last_hb = time.time()
+        elif data[:4] == "OPEN":
+            # this is a actual card read
+             self.handle_input("")
+        else:
+            # unidentified message, log it for reference
+            logger.warn("ButtonReader", "unidentified packet received: %r from %s:%d" % (data, host, port))
+
