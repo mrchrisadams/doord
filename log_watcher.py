@@ -27,8 +27,8 @@ class Watcher(DatagramProtocol):
 		'transition_to_dead_state': ["[doord] Missed Hearbeat", "The monitored instances has not been heard from for %d seconds"],
 		'recurrent_in_error_state': ["[doord] An error is persistent", "log messages:\n%s"]
 	}
-  # These regexes are are checked against to see if a message counts as an error or not.
-  # We're assumign anything that doesn't fit these is bad.
+
+  # These are the regexes that we check against to see if a message counts as an error or not. We're assuming anything that doesn't fit these is bad.
 	regexes = [
 		"\[-\] ReportedHealthCheck no errors",
 		"\[-\] Pipeline .* opening door for authentication result success",
@@ -102,6 +102,7 @@ class Watcher(DatagramProtocol):
 	# state logic
 	def error(self, line):
 		"""eval whether a given line is a log entry representing an error state"""
+
 		for regex in self.regexes:
 			if re.match(regex, line):
 				return False
@@ -170,7 +171,9 @@ class Watcher(DatagramProtocol):
 		command = "curl --basic --user %s:%s --data status=\"%s\" http://twitter.com/statuses/update.xml" % (self.twitter_user, self.twitter_password, update)
 		os.popen(command)
 
+# create container application to attach services to
 application = service.Application('doord')
+# then add the Watcher class as a service onto application, listening on port 514
 serviceCollection = service.IServiceCollection(application)
 internet.UDPServer(514, Watcher()).setServiceParent(serviceCollection)
 
