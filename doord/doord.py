@@ -34,6 +34,9 @@ class DoorD(object):
         if not error:
             logger.log("ReportedHealthCheck", "no errors")
 
+    def power_cycle_reader(self):
+      
+
 
     def check_actual_health(self):
         """query all modules to initiate a component check"""
@@ -46,14 +49,15 @@ class DoorD(object):
  
     # configuration interface
     def load_config(self, filename):
-        """this will load the configuration from the file"""
+        """this will load the configuration from the yaml file, creating a new pipeline for each one described. you can think of each pipeline as a service in Twisted's own lingo"""
         config = yaml.load(open(filename).read())
         self.pipelines = map(lambda c: pipeline.Pipeline(self, c[0], c[1]), config.items())
 
 
 
-
+# Create container application
 application = service.Application('doord')
+
 serviceCollection = service.IServiceCollection(application)
 
 doord = DoorD(serviceCollection)

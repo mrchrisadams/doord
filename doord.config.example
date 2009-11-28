@@ -1,0 +1,59 @@
+# =============================
+# = Doord Example config file =
+# =============================
+
+# Doord works by creating 'pipelines', that have inputs (i.e. rfid readers, or simple buttons or abritrary event listeners), and outputs (in every case here right now, triggering an actuator to open a door).
+
+# This config file shows the example values you'll need to create a few pipelines to make the daemon respond to events and trigger stuff inside the building
+
+# You create a 'pipeline' here to listen for inbound authentication requests here:
+
+#  this is the first pipeline, for RFID readers to check member's against a member's list
+entry:
+  reader:                   # declare the inbound reader
+    type: GeminiReader      # use the class representing the Gemini RFID reader in 'readers.py'
+    port: 4444              # Set the port that the rfid reader is listening on
+  actuator:                 # declare which actuator should fire when a member's card authenticates successfully
+    type: PerleActuator     # use the class representing the Perle Actuator
+    ip: '192.168.1.3'       # set the ip address to telnet into
+    user: 'top_sekrit_user_name'           # set the user for telnetting in as
+    password: 'hard_to_guess_password'   # set the password
+  permissive: true          # this skips checking a member against an external LDAP resource. Use it for debugging
+  
+  
+# second pipeline offers simple push button egress (exit) from the building
+button:
+  reader:                   # declare the inbound reader
+    type: ButtonReader      # uses the simple bifferboard buttonreader in 'readers.py'
+    port: 09092              # set the port to listen 
+  actuator:                 # this button triggers the same actuator as the entry reader pipeline 
+    type: PerleActuator
+    ip: '192.168.192.145'
+    user: 'topsekrit_user'
+    password: 'hard_to_guess_password'
+
+
+# This outbound RFID pipeline is no longer used, but is here to show how to set one up
+exit:
+  reader:
+    type: GeminiReader
+    port: 6321
+  actuator:
+    type: PerleActuator
+    ip: '192.168.1.3'
+    user: 'top_sekrit_user_name'
+    password: 'hard_to_guess_password'
+
+# To outline how this can be extended, we have a simple http based pipeline, to allow people to control Doord functions from a mobile device, like an iphone, or laptop
+
+web-interface:
+  reader:
+    type: WebInterfaceReader
+    user: 'top_sekrit_user_name'
+    password: 'top_sekrit_user_name'
+  actuator:
+    type: PerleActuator
+    ip: '192.168.1.3'
+    user: 'top_sekrit_user_name'
+    password: 'hard_to_guess_password'
+

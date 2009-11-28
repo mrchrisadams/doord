@@ -37,31 +37,60 @@ class Reader(service.Service):
 
 # a very simple web interface to opening the door
 class WebInterfaceResource(resource.Resource):
-    isLeaf = True
+    def render_GET(self, request):
+        return """
+        <html>
+          <body>
+            <h1>This is an emergency button to reboot the door, if it stops reading RFID cards. All attempts to use this are logged, so please, no funny stuff.</h1>
+            <form action='/reboot' method='POST'>
+              <input type='submit' value='Reboot Door'>
+            </form>
+            <form action='/open' method='POST'>
+              <input type='submit' value='Open Door'>
+            </form>
+          </body>
+        </html>""""
+
+class WebInterfaceOpenResource(resource.Resource):
     def __init__(self, reader):
         self.reader = reader
-
-    def render_GET(self, request):
-        return "<html><form action='' method='POST'><input type='submit' value='Open door'></form></html>"
 
     def render_POST(self, request):
         self.reader.open_door()
         request.redirect("/")
         return ""
 
+
+class WebInterfaceRebootResource(resource.Resource):
+    def render_POST(self, request):
+        request.redirect("/")
+        import os
+        os.system('reboot')
+        return ""
+
 class WebInterfaceReader(Reader):
     def __init__(self, pipeline, config = {}):
         Reader.__init__(self, pipeline, config)
         self.port = config.get('port', 8080)
-        internet.TCPServer(self.port, server.Site(WebInterfaceResource(self))).setServiceParent(self.pipeline.getServiceCollection())
+        internet.TCPServer(self.port, self.constructSite()).setServiceParent(self.pipeline.getServiceCollection())
 
-    def open_door(self):
+    def constructSite(self):
+      root = WebInterfaceResource()
+      root.putChild("reboot", WebInterfaceRebootResource())
+      root.putChild("open", WebInterfaceOpenResource(self))
+        return server.Site(root)
+
+      def open_door(self):
         self.handle_input("")
 
-# this is a debug Reader
+# this is a debug Reader, for testing.
+# As soon as a connection is made,  
+# triggers the actuator
+
 class TCPConnectionReaderProtocol(Protocol):
     def connectionMade(self):
         self.factory.owner.have_connection()
+
         self.transport.loseConnection()
 
 class TCPConnectionReader(Reader):
@@ -72,14 +101,17 @@ class TCPConnectionReader(Reader):
         factory = Factory()
         factory.protocol = TCPConnectionReaderProtocol
         factory.owner = self
+        
+        # setServiceParent automatically calls start, top open it up
         internet.TCPServer(self.port, factory).setServiceParent(self.pipeline.getServiceCollection())
 
     def have_connection(self):
         self.handle_input(self.token)
 
-# this is Reader for the Gemini2k X1010IP RFID reader
+# this class represents the Gemini2k X1010IP RFID reader
 class GeminiReader(Reader, DatagramProtocol):
     def __init__(self, pipeline, config = {}):
+        #  the port and the ip address for the reader to ping is set using windows software that comes with the Gemini2k X1010IP RFID reader
         Reader.__init__(self, pipeline, config)
         self.port = config.get('port', 6320)
         self.min_interval = config.get('min_interval', 0.5)
