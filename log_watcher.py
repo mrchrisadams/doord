@@ -18,7 +18,7 @@ class Watcher(DatagramProtocol):
         If the content of the entry doesn't match these regexes, and is
         considered to represent an error state, the Watcher will send
         an email to admin staff
-        """  
+        """
       
 	receipients = []
 	template_texts = {
@@ -27,6 +27,8 @@ class Watcher(DatagramProtocol):
 		'transition_to_dead_state': ["[doord] Missed Hearbeat", "The monitored instances has not been heard from for %d seconds"],
 		'recurrent_in_error_state': ["[doord] An error is persistent", "log messages:\n%s"]
 	}
+  # These regexes are are checked against to see if a message counts as an error or not.
+  # We're assumign anything that doesn't fit these is bad.
 	regexes = [
 		"\[-\] ReportedHealthCheck no errors",
 		"\[-\] Pipeline .* opening door for authentication result success",
@@ -36,7 +38,7 @@ class Watcher(DatagramProtocol):
 
 	log_file = "/var/log/doord.log"
 
-	smtp_sender = "doord@stemcel.co.uk"
+	smtp_sender = "doord@domain.tld"
 	smtp_user = ""
 	smtp_password = ""
 	smtp_host = ""
@@ -79,13 +81,18 @@ class Watcher(DatagramProtocol):
 			self.transition_to_log_state(line)
 
 	def queue_error_log(self, line):
+	    """this appends the latest log message sent from the door monitor to the logfile"""
 		output = file(self.log_file, "a")
 		output.write(line + "\n")
 		output.close()
 
 	# hearbeat monitor
 	def heartbeat_check(self):
-		"""this is called every minute to see if the monitored doord instance is still alive"""
+		"""
+		This is called every minute to see if the monitored doord instance is still alive. 
+		If all is well, we simply set another heartbeat_check to be called in one minute.
+		If something is wrong, we switch to being in an error state.
+		"""
 		print "heartbeat_check"
 		if not self.in_error_state and self.last_read != 0 and time.time() - self.last_read > self.heart_beat_interval:
 			print "missed heartbeat"
@@ -95,10 +102,6 @@ class Watcher(DatagramProtocol):
 	# state logic
 	def error(self, line):
 		"""eval whether a given line is a log entry representing an error state"""
-		if not "doord" or "bad health" in line:
-			return False
-		line = line[7:]
-
 		for regex in self.regexes:
 			if re.match(regex, line):
 				return False
